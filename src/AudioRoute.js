@@ -15,6 +15,16 @@ class AudioRoute extends BasicHTTPServer.BaseRoute {
     handleRequest (request, response) {
         let data = "";
 
+
+        // var data = new Buffer('');
+        // req.on('data', function(chunk) {
+        //     data = Buffer.concat([data, chunk]);
+        // });
+        // req.on('end', function() {
+        //     req.rawBody = data;
+        //     next();
+        // });
+
         request.on("data", (packet) => {
             data += packet;
         });
