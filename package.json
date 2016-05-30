@@ -1,0 +1,16 @@
+{
+  "name": "PiWebAudioService",
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DrLabman/RaspberryPiAudioServer.git"
+  },
+  "author": "Chris Hallson",
+  "license": "MIT",
+  "dependencies": {
+    "av": "^0.4.8",
+    "http-server-basic": "^0.0.4",
+    "mp3": "^0.1.0",
+    "speaker": "^0.3.0"
+  }
+}

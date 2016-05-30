@@ -18,7 +18,10 @@ This software was built to run on a Raspberry Pi placed inside a speaker to allo
 1) Update the software on the Raspberry Pi
     1) `sudo apt-get update`
     1) `sudo apt-get upgrade`
+    1) `sudo apt-get install -y build-essential libasound2-dev`
 1) Install the latest node.js from: https://nodejs.org/en/download/package-manager/#debian-and-ubuntu-based-linux-distributions
+    1) `curl -sL https://deb.nodesource.com/setup_6.x | sudo -E bash -`
+    1) `sudo apt-get install -y nodejs`
 1) Clone this git repository
 1) Run `npm install`
 1) Create startup script for this server
