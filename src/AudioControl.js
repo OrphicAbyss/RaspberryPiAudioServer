@@ -9,6 +9,7 @@ class AudioControl {
      */
     constructor () {
         this.current = null;
+        this.metadata = null;
     }
 
     /**
@@ -21,11 +22,52 @@ class AudioControl {
             // stop playing if we already have a player created
             console.log("Stopping old file");
             this.current.stop();
+
+            this.current = null;
+            this.metadata = null;
         }
 
         console.log("Playing file:", filename);
         this.current = AV.Player.fromFile(filename);
         this.current.on("metadata", (metadata) => {
+            this.metadata = metadata;
+            console.log(Object.keys(metadata));
+        });
+        this.current.on("duration", (duration) => {
+            this.duration = duration / 1000;
+            console.log("Duration:", duration / 1000);
+        });
+        this.current.on("progress", (progress) => {
+            this.progress = progress / 1000;
+            console.log(progress / 1000);
+            // TODO: add hook here to send value back to frontend
+        });
+        this.current.on("error", (error) => {
+            console.error(error);
+        });
+        this.current.on("end", () => {
+            console.log("End of file");
+        });
+    }
+
+    /**
+     * Load from data string ready for playback. The play method must be called after.
+     *
+     * @param {string} data Audio data to play
+     */
+    loadData (data) {
+        if (this.current) {
+            // stop playing if we already have a player created
+            console.log("Stopping old file");
+            this.current.stop();
+
+            this.current = null;
+            this.metadata = null;
+        }
+
+        this.current = AV.Player.fromBuffer(data);
+        this.current.on("metadata", (metadata) => {
+            this.metadata = metadata;
             console.log(Object.keys(metadata));
         });
         this.current.on("duration", (duration) => {
@@ -84,16 +126,14 @@ class AudioControl {
     }
 }
 
-const fs = require("fs");
+module.exports = AudioControl;
 
+//const fs = require("fs");
 //console.log(fs.existsSync("../fplus_200a.mp3"));
-
-const controller = new AudioControl();
-controller.load("../fplus_200a.mp3");
-controller.play();
-setTimeout(() => {
-    controller.seek(60 * 20);
-}, 250);
-
-
+// const controller = new AudioControl();
+// controller.load("../fplus_200a.mp3");
+// controller.play();
+// setTimeout(() => {
+//     controller.seek(60 * 20);
+// }, 250);
 // AV.Player.fromFile("../fplus_200a.mp3");
