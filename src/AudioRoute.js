@@ -13,42 +13,44 @@ class AudioRoute extends BasicHTTPServer.BaseRoute {
     }
 
     handleRequest (request, response) {
-        let data = "";
-
-
-        // var data = new Buffer('');
-        // req.on('data', function(chunk) {
-        //     data = Buffer.concat([data, chunk]);
-        // });
-        // req.on('end', function() {
-        //     req.rawBody = data;
-        //     next();
-        // });
-
-        request.on("data", (packet) => {
-            data += packet;
-        });
-
-        request.on("finish", () => {
-        });
-
-        request.on("end", () => {
-            try {
-                this.respond(request, response, data);
-            } catch (e) {
-                console.log("Error with request", e);
-                this.respondString(response, 500, e);
-            }
-        });
-    }
-
-    respond (request, response, data) {
         const url = request.url;
-
         console.log("Request received:", url);
         const endURL = url.replace(this.route, "");
         console.log("Sub url:", endURL);
+        request.endURL = endURL;
 
+        if (endURL === "/upload") {
+            let data = new Buffer("");
+
+            request.on("data", (chunk) => {
+                data = Buffer.concat([data, chunk]);
+            });
+
+            request.on("end", () => {
+                request.rawBody = data;
+                 
+                
+            });
+        } else {
+            let data = "";
+
+            request.on("data", (packet) => {
+                data += packet;
+            });
+
+            request.on("end", () => {
+                try {
+                    this.respond(request, response, data);
+                } catch (e) {
+                    console.log("Error with request", e);
+                    this.respondString(response, 500, e);
+                }
+            });
+        }
+    }
+
+    respond (request, response, data) {
+        const endURL = request.endURL;
         let responseString = "Ok";
         let ok = false;
 
@@ -77,6 +79,7 @@ class AudioRoute extends BasicHTTPServer.BaseRoute {
                 const position = parseFloat(data);
                 this.audioControl.seek(position);
                 ok = true;
+                break;
             case "/progress":
                 responseString = this.audioControl.progress.toString();
                 ok = true;
