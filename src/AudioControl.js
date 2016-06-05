@@ -10,6 +10,8 @@ class AudioControl {
     constructor () {
         this.current = null;
         this.metadata = null;
+        this.progress = 0;
+        this.duration = 0;
     }
 
     /**
@@ -25,6 +27,8 @@ class AudioControl {
 
             this.current = null;
             this.metadata = null;
+            this.progress = 0;
+            this.duration = 0;
         }
 
         console.log("Playing file:", filename);
@@ -63,6 +67,8 @@ class AudioControl {
 
             this.current = null;
             this.metadata = null;
+            this.progress = 0;
+            this.duration = 0;
         }
 
         this.current = AV.Player.fromBuffer(data);
