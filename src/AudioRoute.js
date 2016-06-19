@@ -14,13 +14,16 @@ class AudioRoute extends BasicHTTPServer.BaseRoute {
 
     handleRequest (request, response) {
         const url = request.url;
-        console.log("Request received:", url);
         const endURL = url.replace(this.route, "").split("?")[0];
-        console.log("Sub url:", endURL);
-        request.endURL = endURL;
-        console.log("Headers", request.headers);
         const contentLength = request.headers["content-length"];
         const contentType = request.headers["content-type"];
+
+        console.log("Request received:", url, "Sub URL:", endURL, "Content Type", contentType, "Content length:", contentLength);
+
+
+        request.endURL = endURL;
+        //console.log("Headers", request.headers);
+
 
         if (endURL === "/upload") {
             const data = Buffer.alloc(Number(contentLength));
@@ -81,10 +84,13 @@ class AudioRoute extends BasicHTTPServer.BaseRoute {
                         }
                     }
 
+                    if (fileData === null) {
+                        throw new Error("Missing file data");
+                    }
                     console.log("Passing file data to respond function", fileData);
                     this.respond(request, response, fileData);
                 } catch (e) {
-                    console.log("Error with request", e);
+                    console.error("Error with request", e, e.stack);
                     this.respondString(response, 500, e);
                 }
             });
@@ -99,7 +105,7 @@ class AudioRoute extends BasicHTTPServer.BaseRoute {
                 try {
                     this.respond(request, response, data);
                 } catch (e) {
-                    console.log("Error with request", e);
+                    console.log("Error with request", e, e.stack);
                     this.respondString(response, 500, e);
                 }
             });
@@ -122,6 +128,7 @@ class AudioRoute extends BasicHTTPServer.BaseRoute {
                 break;
             case "/play":
                 this.audioControl.play();
+                this.audioControl.volume(this.volume);
                 ok = true;
                 break;
             case "/pause":
@@ -148,8 +155,17 @@ class AudioRoute extends BasicHTTPServer.BaseRoute {
             case "/status":
                 responseString = JSON.stringify({
                     progress: this.audioControl.progress,
-                    duration: this.audioControl.duration
+                    duration: this.audioControl.duration,
+                    volume: this.audioControl.volume()
                 });
+                ok = true;
+                break;
+            case "/volume":
+                this.audioControl.volume(data);
+                ok = true;
+                break;
+            case "/metadata":
+                responseString = JSON.stringify(this.audioControl.metadata);
                 ok = true;
                 break;
             default:

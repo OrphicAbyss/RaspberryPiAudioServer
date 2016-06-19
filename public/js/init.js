@@ -1,144 +1,221 @@
 "use strict";
 
-(function($){
-    $(function(){
+const AudioApp = angular.module("AudioApp", ["angular-loading-bar"]);
 
-        $('.button-collapse').sideNav();
-        
-        $(document).ready(function(){
+// Code from: https://github.com/angular/angular.js/issues/6726#issuecomment-41274206
+AudioApp.directive("range", function() {
+    return {
+        replace: true,
+        restrict: "E",
+        scope: {
+            value: "=ngModel",
+            min: "=rangeMin",
+            max: "=rangeMax",
+            step: "=rangeStep"
+        },
+        template: "<input type=\"range\"/>",
+        link: function($scope, element, attrs) {
+            $scope.$watch($scope.min, function() { setValue(); });
+            $scope.$watch($scope.max, function() { setValue(); });
+            $scope.$watch($scope.step, function() { setValue(); });
+            $scope.$watch($scope.value, function() { setValue(); });
 
-            $('.tooltipped').tooltip({delay: 50});
-            // the "href" attribute of .modal-trigger must specify the modal ID that wants to be triggered
-            $('.modal-trigger').leanModal({
-                    dismissible: true, // Modal can be dismissed by clicking outside of the modal
-                    opacity: .5, // Opacity of modal background
-                    in_duration: 300, // Transition in duration
-                    out_duration: 200, // Transition out duration
-                    ready: function() { // Callback for Modal open
-                    },
-                    complete: function() { // Callback for Modal close
-                    }
+            function setValue() {
+                if (
+                    angular.isDefined($scope.min) &&
+                    angular.isDefined($scope.max) &&
+                    angular.isDefined($scope.step) &&
+                    angular.isDefined($scope.value)
+                ) {
+                    element.attr("min", $scope.min);
+                    element.attr("max", $scope.max);
+                    element.attr("step", $scope.step);
+                    element.val($scope.value);
                 }
-            );
-
-            function ok (action) {
-                Materialize.toast(action + " done", 2500);
             }
-            function error (action, err) {
-                Materialize.toast(action + " failed", 2500);
-                console.log(err);
+            function read() {
+                $scope.value = element.val();
             }
 
-            $(".audio-control").click(function (event) {
-                const elem = $(this)[0];
-                console.log(elem);
-                const action = elem.href.substring(elem.href.lastIndexOf("#") + 1);
+            element.on("change", function() {
+                $scope.$apply(read);
+            });
+        }
+    };
+});
 
-                event.stopPropagation();
-                event.cancelBubble = true;
+AudioApp.directive("fileChange", ["$timeout", function fileChange($timeout) {
+    return {
+        restrict: "A",
+        require: "ngModel",
+        scope: {
+            fileChange: "&"
+        },
+        link: function link($scope, element, attrs, ctrl) {
+            element.on("change", onChange);
 
-                $.ajax({
-                    url: "/control/" + action,  //Server script to process data
-                    type: "POST",
-                    //Ajax events
-                    // beforeSend: beforeSendHandler,
-                    success: ok.bind(null, action),
-                    error: error.bind(null, action),
-                    // Form data
-                    data: {},
-                    //Options to tell jQuery not to process data or worry about content-type.
-                    cache: false
-                    // contentType: false,
-                    // processData: false
-                });
+            $scope.$on("destroy", function () {
+                element.off("change", onChange);
             });
 
-            let statusTime = 1000;
-            let interval = null;
-
-            function statusOk (data) {
-                const sliderControl = $("#audioTime")[0];
-                const textControl = $("#audioTimeText")[0];
-
-                data = JSON.parse(data);
-
-                textControl.value = data.progress + " / " + data.duration;
-                //console.log(data);
-                if (sliderControl.max != data.duration) {
-                    sliderControl.max = data.duration;
-                }
-                if (sliderControl.value != data.progress) {
-                    sliderControl.value = data.progress;
-                }
+            function onChange() {
+                ctrl.$setViewValue(element[0].files[0]);
+                $scope.fileChange();
             }
 
-            function statusError (err) {
-                Materialize.toast("Status check failed", 2500);
-                console.log(err);
-                clearInterval(interval);
-                statusTime *= 2;
-                interval = setInterval(checkStatus, statusTime);
+            $timeout(function () {
+                $scope.fileChange();
+            }, 250);
+        }
+    };
+}]);
+
+AudioApp.controller("AudioController", ["$scope", "$http", "$interval", function ($scope, $http, $interval) {
+    $scope.statusTime = 1000;
+    $scope.statusInterval = null;
+    
+    $scope.volume = null;
+    $scope.setVolume = function (newVolume) {
+        console.log("setVolume", newVolume, $scope.volume);
+        $scope.volume = newVolume;
+    };
+    $scope.updateVolume = function (volume) {
+        console.log("updateVolume", volume, $scope.volume);
+        if (angular.isDefined(volume)) {
+            console.log("updateVolume", volume, $scope.volume);
+            $scope.callServer("volume", volume);
+        }
+    };
+
+    $scope.position = {
+        value: null,
+        min: 0,
+        max: null,
+        step: 0.1,
+        text: null
+    };
+
+    $scope.seekBar = angular.element("#seek-bar");
+    $scope.seekBar.attr("min", 0);
+    $scope.seekBar.attr("max", 100);
+    $scope.seekBar.attr("step", 0.1);
+
+    $scope.updatePosition = function (position) {
+        $scope.callServer("seek", position);
+    };
+    
+    function checkStatus () {
+        $http({
+            url: "/control/status",
+            method: "post",
+            data: {}
+        }).then(function (reply) {
+            const data = reply.data;
+            if ($scope.volume !== data.volume) {
+                $scope.setVolume(data.volume);
             }
 
-            function checkStatus () {
-                $.ajax({
-                    url: "/control/status",
-                    success: statusOk,
-                    error: statusError,
-                    //Options to tell jQuery not to process data or worry about content-type.
-                    cache: false
-                    // contentType: false,
-                    // processData: false
-                });
+            $scope.position.text = data.progress + " / " + data.duration;
+            if ($scope.position.max != data.duration) {
+                $scope.position.max = data.duration;
+                $scope.seekBar.attr("max", data.duration);
             }
-
-            // Interval to check status
-            interval = setInterval(checkStatus, statusTime);
+            // Don't update the slider if we are seeking
+            if ($scope.position.value != data.progress) {
+                $scope.position.value = data.progress;
+            }
+        }).catch(function (error) {
+            Materialize.toast("Status check failed", 2500);
+            console.log(error);
+            $interval.cancel($scope.statusInterval);
+            $scope.statusTime *= 2;
+            $scope.statusInterval = $interval(checkStatus, $scope.statusTime);
         });
-    }); // end of document ready
-})(jQuery); // end of jQuery name space
+    }
 
-function uploadSubmit () {
-    const progressHandlingFunction = function (event) {
-        console.log("Upload: ", event.loaded, "/", event.total);
-        // console.log("progressHandlingFunction", arguments);
-    };
-    const beforeSendHandler = function (event) {
-        // console.log("beforeSendHandler", arguments);
-    };
-    const completeHandler = function (event) {
-        // console.log("completeHandler", arguments);
-        Materialize.toast("File upload complete.", 4000);
-    };
-    const errorHandler = function () {
-        // console.log("errorHandler", arguments);
-        Materialize.toast("Error uploading file.", 4000);
+    // Interval to check status
+    $scope.statusInterval = $interval(checkStatus, $scope.statusTime);
+
+    $scope.callServer = function (action, data) {
+        if (!data) {
+            data = {};
+        }
+        $http({
+            url: "/control/" + action,
+            method: "POST",
+            data: data
+        }).then(function (reply) {
+            Materialize.toast(action + " done", 2500);
+
+            // check the metadata after any function in case it's changed
+            checkMetadata();
+        }).catch(function (err) {
+            Materialize.toast(action + " failed", 2500);
+            console.log(err);
+        });
     };
 
-    const form = $("#file-upload-form");
+    function checkMetadata () {
+        $http({
+            url: "/control/metadata",
+            method: "POST",
+            data: ""
+        }).then(function (reply) {
+            $scope.metadata = reply.data;
+            console.log($scope.metadata);
+        }).catch(function (err) {
+            Materialize.toast("Metadata check failed", 2500);
+            console.log(err);
+        });
+    }
 
-    var formData = new FormData(form[0]);
-    $.ajax({
-        url: "/control/upload",  //Server script to process data
-        type: "POST",
-        xhr: function() {  // Custom XMLHttpRequest
-            var myXhr = $.ajaxSettings.xhr();
-            if(myXhr.upload){ // Check if upload property exists
-                myXhr.upload.addEventListener("progress", progressHandlingFunction, false); // For handling the progress of the upload
+    checkMetadata();
+
+    angular.element(".tooltipped").tooltip({delay: 50});
+    // the "href" attribute of .modal-trigger must specify the modal ID that wants to be triggered
+    angular.element(".modal-trigger").leanModal({
+            dismissible: true, // Modal can be dismissed by clicking outside of the modal
+            opacity: .5, // Opacity of modal background
+            in_duration: 300, // Transition in duration
+            out_duration: 200, // Transition out duration
+            ready: function() { // Callback for Modal open
+            },
+            complete: function() { // Callback for Modal close
             }
-            return myXhr;
-        },
-        //Ajax events
-        beforeSend: beforeSendHandler,
-        success: completeHandler,
-        error: errorHandler,
-        // Form data
-        data: formData,
-        //Options to tell jQuery not to process data or worry about content-type.
-        cache: false,
-        contentType: false,
-        processData: false
-    });
+        }
+    );
+    angular.element(".button-collapse").sideNav();
+}]);
 
-    $("#uploadModal").closeModal();
-}
+AudioApp.controller("UploadController", ["$scope", "$http", function UploadController ($scope, $http) {
+    console.log("Started upload controller");
+
+    $scope.file = null;
+
+    $scope.updateFileDetails = function () {
+        console.log($scope.file);
+    };
+
+    $scope.submit = function () {
+        const form = angular.element("#file-upload-form");
+
+        var formData = new FormData(form[0]);
+        $http({
+            url: "/control/upload",
+            method: "POST",
+            data: formData,
+            transformRequest: angular.identity,
+            headers: {
+                "Content-Type": undefined
+            }
+        }).then(function (data) {
+            // console.log("completeHandler", arguments);
+            Materialize.toast("File upload complete.", 4000);
+        }).catch(function (error) {
+            // console.log("errorHandler", arguments);
+            Materialize.toast("Error uploading file.", 4000);
+        });
+
+        angular.element("#uploadModal").closeModal();
+    };
+}]);

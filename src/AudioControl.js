@@ -12,6 +12,7 @@ class AudioControl {
         this.metadata = null;
         this.progress = 0;
         this.duration = 0;
+        this.volumeValue = 100;
     }
 
     /**
@@ -52,6 +53,7 @@ class AudioControl {
         this.current.on("end", () => {
             console.log("End of file");
         });
+        this.current.volume = this.volumeValue;
     }
 
     /**
@@ -91,6 +93,7 @@ class AudioControl {
         this.current.on("end", () => {
             console.log("End of file");
         });
+        this.current.volume = this.volumeValue;
     }
 
     /**
@@ -128,6 +131,24 @@ class AudioControl {
     seek (time) {
         if (this.current) {
             this.current.seek(time * 1000);
+        }
+    }
+
+    /**
+     * Set/Get the volume.
+     *
+     * @param {number} [value] If supplied, adjusts the volume to this value
+     * @return {number} Returns the volumn if no volume value supplied
+     */
+    volume (value) {
+        if (value) {
+            this.volumeValue = value;
+            console.log("Set volume:", value);
+            if (this.current) {
+                this.current.volume = value;
+            }
+        } else {
+            return this.volumeValue;
         }
     }
 }
