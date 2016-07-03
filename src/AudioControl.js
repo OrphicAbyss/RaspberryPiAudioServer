@@ -34,6 +34,9 @@ class AudioControl {
 
         console.log("Playing file:", filename);
         this.current = AV.Player.fromFile(filename);
+        this.current.on("format", (format) => {
+            console.log("Format", format);
+        });
         this.current.on("metadata", (metadata) => {
             this.metadata = metadata;
             console.log(Object.keys(metadata));
@@ -74,6 +77,9 @@ class AudioControl {
         }
 
         this.current = AV.Player.fromBuffer(data);
+        this.current.on("format", (format) => {
+            console.log("Format", format);
+        });
         this.current.on("metadata", (metadata) => {
             this.metadata = metadata;
             console.log(Object.keys(metadata));
