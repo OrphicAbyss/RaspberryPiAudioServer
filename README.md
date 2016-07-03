@@ -25,6 +25,8 @@ This software was built to run on a Raspberry Pi placed inside a speaker to allo
 1) Clone this git repository
 1) Run `npm install`
 1) Create startup script for this server
+1) Run port redirect to listen on port 80 (optional) `sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port 8080`
+1) Run `npm start`
 
 # Plan
 1) Build out audio playback features
